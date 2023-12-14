@@ -65,8 +65,8 @@ object Taller4 {
         subcaden_candidatas(k*2 , SCkFiltrado)
       }
     }
-
-    val SC = subcaden_candidatas(1, alfabeto.map(Seq(_)))
+    val Alfab = alfabeto.map(Seq(_))
+    val SC = subcaden_candidatas(1, Alfab)
     SC.head
 
   }
@@ -78,7 +78,7 @@ object Taller4 {
     def main(args: Array[String]): Unit = {
 
       val secuencia = Seq('a', 'c', 'a', 'g')
-      val tamano = 8
+      val tamano = 4
       val secuenciaRandom = secuenciaaleatoria(tamano)
 
       val o: Oraculo = (s: Seq[Char]) => {
