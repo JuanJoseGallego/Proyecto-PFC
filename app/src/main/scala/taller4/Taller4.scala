@@ -23,7 +23,11 @@ object Taller4 {
     (1 to tamano).map(_ => alfabeto(random.nextInt(alfabeto.length))).mkString //En cada posición se pega una letra de forma aleatoria
   }
 
-
+  def comparar_algoritmos (funcion: (Seq[Char], Int, Oraculo)=> Seq[Char])
+                          (alfabeto: Seq[Char], tamano: Int, o: Oraculo):Double ={
+    val tiempo: Double = (withWarmer(new Warmer.Default) measure { funcion(alfabeto, tamano, o) }).value
+    tiempo
+  }
 //Prc = Problema en la reconstruccion de cadenas ingenuo
   def prc_ingenuo(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
     def cadenas_candidatas(alfabeto: Seq[Char], tamano: Int): Seq[Seq[Char]] = {
@@ -61,8 +65,8 @@ object Taller4 {
             Seq(s1 ++ s2)
           }
         }
-        val SCkFiltrado = SCk.filter(o)
-        subcaden_candidatas(k*2 , SCkFiltrado)
+        val SCkF = SCk.filter(o)
+        subcaden_candidatas(k*2 , SCkF)
       }
     }
     val Alfab = alfabeto.map(Seq(_))
@@ -71,50 +75,72 @@ object Taller4 {
 
   }
 
-  //FALTA MEJORARLO
-  //def prc_turboMejorado(alfabeto: Seq[Char], tamano: Int, o:Oraculo): Seq[Char] = {
-  //}
+  def prc_turboMejorado(alfabeto: Seq[Char], tamano: Int, o:Oraculo): Seq[Char] = {
+
+    def filtrar(cadenaActual: Seq[Seq[Char]], cadenaAnterior: Seq[Seq[Char]]): Seq[Seq[Char]] = {
+      if (cadenaActual.head.length > 2) {
+        cadenaActual.filter { s1 =>
+          s1.sliding(s1.length / 2, 1).forall(cadenaAnterior.contains)
+        }
+      } else cadenaActual
+    }
+    def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
+      if (k >= tamano) SC
+      else {
+        val SCk = SC.flatMap { s1 =>
+          SC.flatMap { s2 =>
+            Seq(s1 ++ s2)
+          }
+        }
+        val SCactual = filtrar(SCk, SC)
+        val SCkFiltrado = SCactual.filter(o)
+        subcaden_candidatas(k * 2, SCkFiltrado)
+      }
+    }
+    val Alfab = alfabeto.map(Seq(_)).filter(o)
+    val SC = subcaden_candidatas(1, Alfab)
+    SC.head
+  }
+
 
     def main(args: Array[String]): Unit = {
 
       val secuencia = Seq('a', 'c', 'a', 'g')
-      val tamano = 4
+      val tamano = 64
       val secuenciaRandom = secuenciaaleatoria(tamano)
 
       val o: Oraculo = (s: Seq[Char]) => {
         secuenciaRandom.containsSlice(s)
       }
-      val inicio1 = System.nanoTime()
-      val cadena = prc_ingenuo(alfabeto, tamano, o)
-      println(s" ingenuo Cadena encontrada: $cadena")
-      val fin1 = System.nanoTime()
-      val tiempo1 = (fin1 - inicio1)/ 1e6
+      //val tiempo1 = comparar_algoritmos(prc_ingenuo)(alfabeto, tamano, o)
 
-      val inicio2 = System.nanoTime()
+      val tiempo2 = comparar_algoritmos(prc_mejorado)(alfabeto, tamano, o)
+
+      val tiempo3 = comparar_algoritmos(prc_turbo)(alfabeto, tamano, o)
+
+      val tiempo4 = comparar_algoritmos(prc_turboMejorado)(alfabeto, tamano, o)
+
+
+      //resultados
+      //val cadena = prc_ingenuo(alfabeto, tamano, o)
+      //println(s" ingenuo Cadena encontrada:         $cadena")
+
       val cadenaM = prc_mejorado(alfabeto, tamano, o)
-      println(s" mejorado Cadena encontrada: $cadenaM")
-      val fin2 = System.nanoTime()
-      val tiempo2 = (fin2 - inicio2)/ 1e6
+      println(s" mejorado Cadena encontrada:         $cadenaM")
 
-      val inicio3 = System.nanoTime()
       val cadenaT = prc_turbo(alfabeto, tamano, o)
-      println(s" turbo Cadena encontrada: $cadenaT")
-      val fin3 = System.nanoTime()
-      val tiempo3 = (fin3 - inicio3)/ 1e6
+      println(s" turbo Cadena encontrada:            $cadenaT")
 
-      val inicio4 = System.nanoTime()
-      //val cadenaTM = prc_turboMejorado(alfabeto, tamano, o)
-      //println(s" turbo Mejorado Cadena encontrada: $cadenaTM")
-      val fin4 = System.nanoTime()
-      val tiempo4 = (fin4 - inicio4) / 1e6
+      val cadenaTM = prc_turboMejorado(alfabeto, tamano, o)
+      println(s" turbo Mejorado Cadena encontrada:   $cadenaTM")
 
 
 
-
-      println(s"Tiempo de ejecucion: $tiempo1 ms")
+      //println(s"Tiempo de ejecucion: $tiempo1 ms")
       println(s"Tiempo de ejecucion: $tiempo2 ms")
       println(s"Tiempo de ejecucion: $tiempo3 ms")
-      //println(s"Tiempo de ejecucion: $tiempo4 ms")
+      println(s"Tiempo de ejecucion: $tiempo4 ms")
+      //println(tiempo4-tiempo3)
   }
 }
 
