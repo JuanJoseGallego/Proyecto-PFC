@@ -26,24 +26,28 @@ object Taller4 {
 
   //se usan medidas de rendimiento para evaluar el tiempo que tarde en ejecutarse la función
   //esta función depende de los parámetros alfabeto, tamano y el oraculo
-  def comparar_algoritmos (funcion: (Seq[Char], Int, Oraculo)=> Seq[Char])
-                          (alfabeto: Seq[Char], tamano: Int, o: Oraculo):Double ={
-    val tiempo: Double = (withWarmer(new Warmer.Default) measure { funcion(alfabeto, tamano, o) }).value
+  def comparar_algoritmos(funcion: (Seq[Char], Int, Oraculo) => Seq[Char])
+                         (alfabeto: Seq[Char], tamano: Int, o: Oraculo): Double = {
+    val tiempo: Double = (withWarmer(new Warmer.Default) measure {
+      funcion(alfabeto, tamano, o)
+    }).value
     tiempo
   }
+
   //Prc = Problema en la reconstruccion de cadenas ingenuo
   def prc_ingenuo(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
     def cadenas_candidatas(alfabeto: Seq[Char], tamano: Int): Seq[Seq[Char]] = {
       //si la variable de control K es igual al tamaño n, se detiene y devuelve la SUBCADENA
       if (tamano == 0) Seq(Seq.empty[Char])
-       else { //longitudes mayores a 0 (caso recursivo)
+      else { //longitudes mayores a 0 (caso recursivo)
         alfabeto.flatMap(caracter => cadenas_candidatas(alfabeto, tamano - 1).map(caracter +: _))
       }
     }
+
     //variable que contiene una secuencia de secuencias de posibles candidatas de tamaño n
-    val combinaciones = cadenas_candidatas(alfabeto,tamano)
+    val combinaciones = cadenas_candidatas(alfabeto, tamano)
     //Itera entre los elementos de la secuencia y si cumple con la condicion del oraculo, retorna la secuencia.
-    combinaciones.flatMap { seq =>      if (o(seq)) seq      else None}
+    combinaciones.flatMap { seq => if (o(seq)) seq else None }
 
   }
 
@@ -54,19 +58,28 @@ object Taller4 {
         alf.flatMap(caracter => cadenas_candidatas(alfabeto, tamano - 1).map(caracter +: _))
       }
     }
-    val (a, b) = alfabeto.splitAt(alfabeto.length/2)
-    val t1 = task {cadenas_candidatas(a,tamano)}
-    val t2 = task {cadenas_candidatas(b,tamano)}
+
+    val (a, b) = alfabeto.splitAt(alfabeto.length / 2)
+    val t1 = task {
+      cadenas_candidatas(a, tamano)
+    }
+    val t2 = task {
+      cadenas_candidatas(b, tamano)
+    }
     val combinaciones = t1.join ++ t2.join
     //Itera entre los elementos de la secuencia y si cumple con la condicion del oraculo, retorna la secuencia.
-    val (comb1, comb2 )= combinaciones.splitAt(combinaciones.length/2)
-    val t3 = task {comb1.flatMap { seq => if (o(seq)) seq else None }}
-    val t4 = task {comb2.flatMap { seq => if (o(seq)) seq else None }}
+    val (comb1, comb2) = combinaciones.splitAt(combinaciones.length / 2)
+    val t3 = task {
+      comb1.flatMap { seq => if (o(seq)) seq else None }
+    }
+    val t4 = task {
+      comb2.flatMap { seq => if (o(seq)) seq else None }
+    }
     t3.join ++ t4.join
 
   }
 
-  def prc_mejorado(alfabeto: Seq[Char], tamano: Int, o:Oraculo): Seq[Char] = {
+  def prc_mejorado(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
     def subcaden_candidatas(k: Int, SCanterior: Seq[Seq[Char]]): Seq[Seq[Char]] = {
       if (k == tamano) SCanterior
       else {
@@ -84,9 +97,13 @@ object Taller4 {
     def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
       if (k == tamano) SC
       else {
-        val (a, b) = SC.splitAt(SC.length/2)
-        val t1 = task {a.flatMap(elementos_sc => alfabeto.map(letra => elementos_sc :+ letra)).filter(o)}
-        val t2 = task {b.flatMap(elementos_sc => alfabeto.map(letra => elementos_sc :+ letra)).filter(o)}
+        val (a, b) = SC.splitAt(SC.length / 2)
+        val t1 = task {
+          a.flatMap(elementos_sc => alfabeto.map(letra => elementos_sc :+ letra)).filter(o)
+        }
+        val t2 = task {
+          b.flatMap(elementos_sc => alfabeto.map(letra => elementos_sc :+ letra)).filter(o)
+        }
         val sck = t1.join ++ t2.join
         subcaden_candidatas(k + 1, sck)
       }
@@ -96,7 +113,7 @@ object Taller4 {
     SC.head
   }
 
-  def prc_turbo(alfabeto: Seq[Char], tamano: Int, o:Oraculo): Seq[Char] = {
+  def prc_turbo(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
     def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
       if (k >= tamano) SC
       else {
@@ -105,23 +122,6 @@ object Taller4 {
             Seq(s1 ++ s2)
           }
         }
-        val SCkF = SCk.filter(o)
-        subcaden_candidatas(k*2 , SCkF)
-      }
-    }
-    val Alfab = alfabeto.map(Seq(_))
-    val SC = subcaden_candidatas(1, Alfab)
-    SC.head
-  }
-
-  def prc_turboPar(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
-    def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
-      if (k >= tamano) SC
-      else {
-        val (a, b) = SC.splitAt(SC.length/2)
-        val t1 = task {a.flatMap { s1 => SC.flatMap { s2 => Seq(s1 ++ s2) } }}
-        val t2 = task {b.flatMap { s1 => SC.flatMap { s2 => Seq(s1 ++ s2) } }}
-        val SCk = t1.join ++ t2.join
         val SCkF = SCk.filter(o)
         subcaden_candidatas(k * 2, SCkF)
       }
@@ -132,6 +132,27 @@ object Taller4 {
     SC.head
   }
 
+  def prc_turboPar(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
+    def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
+      if (k >= tamano) SC
+      else {
+        val (a, b) = SC.splitAt(SC.length / 2)
+        val t1 = task {
+          a.flatMap { s1 => SC.flatMap { s2 => Seq(s1 ++ s2) } }
+        }
+        val t2 = task {
+          b.flatMap { s1 => SC.flatMap { s2 => Seq(s1 ++ s2) } }
+        }
+        val SCk = t1.join ++ t2.join
+        val SCkF = SCk.filter(o)
+        subcaden_candidatas(k * 2, SCkF)
+      }
+    }
+
+    val Alfab = alfabeto.map(Seq(_))
+    val SC = subcaden_candidatas(1, Alfab)
+    SC.head
+  }
 
 
   def prc_turboMejorado(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
@@ -172,7 +193,7 @@ object Taller4 {
         cadenaActual.filter { s1 =>
           s1.sliding(s1.length / 2, 1).forall(cadenaAnterior.contains)
         }
-      }else cadenaActual
+      } else cadenaActual
     }
 
     def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
@@ -259,7 +280,8 @@ object Taller4 {
       case Hoja(c, _) => c
     }
   }
-  def reconstruirCadenaTurboMejorada(alfabeto:Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
+/*
+  def prc_turboacelerada(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
     def reconstruirCadenaTurboMejoradaRecursivo(tamano: Int, o: Oraculo, t: Trie): Seq[Char] = {
       if (tamano == 0) Seq()
       else {
@@ -276,77 +298,73 @@ object Taller4 {
 
     reconstruirCadenaTurboMejoradaRecursivo(tamano, o, arbolSufijos(alfabeto.map(c => Seq(c)), Nodo(' ', false, List())))
   }
+*/
 
+  def main(args: Array[String]): Unit = {
 
+    val secuencia = Seq('a', 'c', 'a', 'g')
+    val tamano = 4
+    val secuenciaRandom = secuenciaaleatoria(tamano)
 
-
-
-    def main(args: Array[String]): Unit = {
-
-      val secuencia = Seq('a', 'c', 'a', 'g')
-      val tamano = 4
-      val secuenciaRandom = secuenciaaleatoria(tamano)
-
-      val o: Oraculo = (s: Seq[Char]) => {
-        secuenciaRandom.containsSlice(s)
-      }
-      //val tiempo1 = comparar_algoritmos(prc_ingenuo)(alfabeto, tamano, o)
-      //val tiempo1p = comparar_algoritmos(prc_ingenuoPar)(alfabeto, tamano, o)
-
-      //val tiempo2 = comparar_algoritmos(prc_mejorado)(alfabeto, tamano, o)
-      //val tiempo2p = comparar_algoritmos(prc_mejoradoPar)(alfabeto, tamano, o)
-
-      //val tiempo3 = comparar_algoritmos(prc_turbo)(alfabeto, tamano, o)
-      //val tiempo3p = comparar_algoritmos(prc_turboPar)(alfabeto, tamano, o)
-
-      //val tiempo4 = comparar_algoritmos(prc_turboMejorado)(alfabeto, tamano, o)
-      //val tiempo4p = comparar_algoritmos(prc_turboMejoradoPar)(alfabeto, tamano, o)
-
-      val tiempo5 = comparar_algoritmos(reconstruirCadenaTurboMejorada)(alfabeto, tamano, o)
-
-      //resultados
-      //val cadena = prc_ingenuo(alfabeto, tamano, o)
-      //println(s" ingenuo Cadena encontrada:         $cadena")
-      //val cadena_Par = prc_ingenuoPar(alfabeto, tamano, o)
-      //println(s" ingenuoPar Cadena encontrada:      $cadena_Par")
-
-      //val cadenaM = prc_mejorado(alfabeto, tamano, o)
-      //println(s" mejorado Cadena encontrada:         $cadenaM")
-      //val cadenaM_Par = prc_mejoradoPar(alfabeto, tamano, o)
-      //println(s" mejoradoPar Cadena encontrada:      $cadenaM_Par")
-
-      //val cadenaT = prc_turbo(alfabeto, tamano, o)
-      //println(s" turbo Cadena encontrada:            $cadenaT")
-      //val cadenaT_Par = prc_turboPar(alfabeto, tamano, o)
-      //println(s" turboPar Cadena encontrada:         $cadenaT_Par")
-
-      //val cadenaTM = prc_turboMejorado(alfabeto, tamano, o)
-      //println(s" turbo Mejorado Cadena encontrada:   $cadenaTM")
-      //val cadenaTM_Par = prc_turboMejoradoPar(alfabeto, tamano, o)
-      //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTM_Par")
-
-      val cadenaTa = reconstruirCadenaTurboMejorada(alfabeto, tamano, o)
-      println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa")
-
-
-      //println(s"Tiempo de ejecucion prc_ingenuo:        $tiempo1 ms")
-      //println(s"Tiempo de ejecucion prc_ingenuoPar:     $tiempo1p ms")
-
-      //println(s"Tiempo de ejecucion prc_mejorado:       $tiempo2 ms")
-      //println(s"Tiempo de ejecucion prc_mejoradoPar:    $tiempo2p ms")
-
-      //println(s"Tiempo de ejecucion prc_turbo:          $tiempo3 ms")
-      //println(s"Tiempo de ejecucion prc_turboPar:       $tiempo3p ms")
-
-      //println(s"Tiempo de ejecucion prc_turbomejorado:  $tiempo4 ms")
-      //println(s"Tiempo de ejecucion prc_turbomejoradoPar:  $tiempo4p ms")
-
-
-      println(s"Secuencia aleatoria:  $secuenciaRandom")
-      println(s"Tiempo de ejecucion reconstruirCadenaTurboMejorada:  $tiempo5 ms")
-
-
-
+    val o: Oraculo = (s: Seq[Char]) => {
+      secuenciaRandom.containsSlice(s)
     }
+    //val tiempo1 = comparar_algoritmos(prc_ingenuo)(alfabeto, tamano, o)
+    //val tiempo1p = comparar_algoritmos(prc_ingenuoPar)(alfabeto, tamano, o)
+
+    val tiempo2 = comparar_algoritmos(prc_mejorado)(alfabeto, tamano, o)
+    val tiempo2p = comparar_algoritmos(prc_mejoradoPar)(alfabeto, tamano, o)
+
+    val tiempo3 = comparar_algoritmos(prc_turbo)(alfabeto, tamano, o)
+    val tiempo3p = comparar_algoritmos(prc_turboPar)(alfabeto, tamano, o)
+
+    val tiempo4 = comparar_algoritmos(prc_turboMejorado)(alfabeto, tamano, o)
+    val tiempo4p = comparar_algoritmos(prc_turboMejoradoPar)(alfabeto, tamano, o)
+
+    //val tiempo5 = comparar_algoritmos(prc_turboacelerada)(alfabeto, tamano, o)
+
+    //resultados
+    //val cadena = prc_ingenuo(alfabeto, tamano, o)
+    //println(s" ingenuo Cadena encontrada:         $cadena")
+    //val cadena_Par = prc_ingenuoPar(alfabeto, tamano, o)
+    //println(s" ingenuoPar Cadena encontrada:      $cadena_Par")
+
+    val cadenaM = prc_mejorado(alfabeto, tamano, o)
+    println(s" mejorado Cadena encontrada:         $cadenaM")
+    val cadenaM_Par = prc_mejoradoPar(alfabeto, tamano, o)
+    println(s" mejoradoPar Cadena encontrada:      $cadenaM_Par")
+
+    val cadenaT = prc_turbo(alfabeto, tamano, o)
+    println(s" turbo Cadena encontrada:            $cadenaT")
+    val cadenaT_Par = prc_turboPar(alfabeto, tamano, o)
+    println(s" turboPar Cadena encontrada:         $cadenaT_Par")
+
+    val cadenaTM = prc_turboMejorado(alfabeto, tamano, o)
+    println(s" turbo Mejorado Cadena encontrada:   $cadenaTM")
+    val cadenaTM_Par = prc_turboMejoradoPar(alfabeto, tamano, o)
+    println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTM_Par")
+
+    //val cadenaTa = prc_turboacelerada(alfabeto, tamano, o)
+    //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa")
+
+
+    //println(s"Tiempo de ejecucion prc_ingenuo:        $tiempo1 ms")
+    //println(s"Tiempo de ejecucion prc_ingenuoPar:     $tiempo1p ms")
+
+    println(s"Tiempo de ejecucion prc_mejorado:       $tiempo2 ms")
+    println(s"Tiempo de ejecucion prc_mejoradoPar:    $tiempo2p ms")
+
+    println(s"Tiempo de ejecucion prc_turbo:          $tiempo3 ms")
+    println(s"Tiempo de ejecucion prc_turboPar:       $tiempo3p ms")
+
+    println(s"Tiempo de ejecucion prc_turbomejorado:  $tiempo4 ms")
+    println(s"Tiempo de ejecucion prc_turbomejoradoPar:  $tiempo4p ms")
+
+
+    //println(s"Secuencia aleatoria:  $secuenciaRandom")
+    //println(s"Tiempo de ejecucion prc_turboacelerada:  $tiempo5 ms")
+
+
+  }
 }
 
