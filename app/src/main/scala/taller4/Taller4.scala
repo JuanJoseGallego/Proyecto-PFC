@@ -217,8 +217,20 @@ object Taller4 {
     val SC = subcaden_candidatas(1, Alfab)
     SC.head
   }
+  def raiz(t: Trie): Char = {
+    t match {
+      case Nodo(c, _, _) => c
+      case Hoja(c, _) => c
+    }
+  }
 
-
+  def cabezas(t: Trie): Seq[Char] = {
+    t match {
+      case Nodo(_, _, lT) => lT.map(t => raiz(t))
+      case Hoja(c, _) => Seq(c)
+    }
+  }
+/*
   def adicionar(s: Seq[Char], t: Trie): Trie = {
     def adicionarRecursivo(subsec: Seq[Char], subtrie: Trie): Trie = {
       subsec match {
@@ -257,6 +269,7 @@ object Taller4 {
     perteneceRecursivo(s, t)
   }
 
+
   def arbolSufijos(ss: Seq[Seq[Char]], t: Trie): Trie = {
     def funcion_aux(ss: Seq[Seq[Char]], t: Trie): Trie = {
       if (ss.isEmpty) t
@@ -265,20 +278,98 @@ object Taller4 {
 
     funcion_aux(ss, Nodo(' ', false, List()))
   }
+*/
+def pertenece(s: Seq[Char], t: Trie): Boolean = {
+  // Devuelve true si la secuencia s es reconocida por el trie t, y false si no.
+  s match {
+    case caracter :: cola =>
+      t match {
+        case Nodo(_, _, hijos) => {
+          val child = hijos.filter(hijo => raiz(hijo) == caracter)
+          if (child.nonEmpty)
+            pertenece(cola, child.head)
+          else
+            false
+        }
+        case Hoja(_, _) => false
+      }
+    case Nil =>
+      t match {
+        case Nodo(_, marcada, _) => marcada
+        case Hoja(_, marcada) => marcada
+      }
+  }
+}
 
-  def cabezas(t: Trie): Seq[Char] = {
-    t match {
-      case Nodo(_, _, lT) => lT.map(t => raiz(t))
-      case Hoja(c, _) => Seq(c)
+  def adicionar(s: Seq[Char], t: Trie): Trie = {
+    // Prepara la "rama" a ser agregada al arbol correspondiente a la secuencia o resto de secuencia a ser añadida.
+    def crearRama(s: Seq[Char]): Trie = {
+      s match {
+        case cabeza :: cola => cola match {
+          case head :: tail => Nodo(cabeza, marcada = false, List(crearRama(cola)))
+          case Nil => Hoja(cabeza, marcada = true)
+        }
+        case Nil => Nodo(' ', marcada = false, List())
+      }
     }
+
+    def agregarRama(arbolActual: Trie, prefix: Seq[Char], remaining: Seq[Char]): Trie = {
+      (arbolActual, prefix, remaining) match {
+        case (Nodo(car, marcada, hijos), _, head :: tail) if cabezas(Nodo(car, marcada, hijos)).contains(head) =>
+          // Recorre recursivamente el árbol hasta llegar al camino deseado
+          val updatedHijos = hijos.map { hijo =>
+            if (raiz(hijo) == head) agregarRama(hijo, prefix :+ head, tail)
+            else hijo
+          }
+          Nodo(car, marcada, updatedHijos)
+        case (Hoja(car, marcada), _, head :: tail) =>
+          // Convierte la hoja en un Nodo con el nuevo "subárbol" como hijo
+          Nodo(car, marcada, List(crearRama(remaining)))
+        case (Nodo(car, marcada, hijos), _, head :: tail) =>
+          // Agrega el nuevo nodo a la lista de hijos cuando el camino se detiene en un Nodo
+          Nodo(car, marcada, hijos :+ crearRama(remaining))
+        case (Nodo(car, false, hijos), _, Nil) =>
+          // Modifica el valor de marcada a true si no hay camino por recorrer pero los elementos de la cadena están en el arbol.
+          Nodo(car, marcada = true, hijos)
+        case (_, _, _) =>
+          arbolActual
+      }
+    }
+
+    agregarRama(t, Seq.empty[Char], s)
   }
 
+  def arbolDeSufijos(ss: Seq[Seq[Char]]): Trie = {
+    // dada una secuencia no vacia de secuencias de vuelve el arbol de sufijos asociado a esas secuencias
+    val arbolVacio: Trie = Nodo(' ', marcada = false, List())
+    ss.foldLeft(arbolVacio) { (acc, s) => adicionar(s, acc) }
+  }
 
-  def raiz(t: Trie): Char = {
-    t match {
-      case Nodo(c, _, _) => c
-      case Hoja(c, _) => c
+  def prc_turboacelerada(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
+
+    def filtrar(cadenaActual: Seq[Seq[Char]], cadenaAnterior: Seq[Seq[Char]] , k:Int ): Seq[Seq[Char]] = {
+      if (cadenaActual.head.length > 2) {
+        val t = arbolDeSufijos(cadenaAnterior)
+        cadenaActual.filter{s1 => 0 to s1.length - k forall { i => pertenece(s1.slice(i,i+k),t) }}
+      } else cadenaActual
     }
+    def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
+      if (k >= tamano) SC
+      else {
+        val SCk = SC.flatMap { s1 =>
+          SC.flatMap { s2 =>
+            Seq(s1 ++ s2)
+          }
+        }
+
+        val SCactual = filtrar(SCk, SC, k)
+        val SCkFiltrado = SCactual.filter(o)
+        subcaden_candidatas(k * 2, SCkFiltrado)
+      }
+    }
+    val Alfab = alfabeto.map(Seq(_)).filter(o)
+    val SC = subcaden_candidatas(1, Alfab)
+    SC.head
   }
 /*
   def prc_turboacelerada(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
@@ -303,7 +394,7 @@ object Taller4 {
   def main(args: Array[String]): Unit = {
 
     val secuencia = Seq('a', 'c', 'a', 'g')
-    val tamano = 4
+    val tamano = 8
     val secuenciaRandom = secuenciaaleatoria(tamano)
 
     val o: Oraculo = (s: Seq[Char]) => {
@@ -312,16 +403,16 @@ object Taller4 {
     //val tiempo1 = comparar_algoritmos(prc_ingenuo)(alfabeto, tamano, o)
     //val tiempo1p = comparar_algoritmos(prc_ingenuoPar)(alfabeto, tamano, o)
 
-    val tiempo2 = comparar_algoritmos(prc_mejorado)(alfabeto, tamano, o)
-    val tiempo2p = comparar_algoritmos(prc_mejoradoPar)(alfabeto, tamano, o)
+    //val tiempo2 = comparar_algoritmos(prc_mejorado)(alfabeto, tamano, o)
+    //val tiempo2p = comparar_algoritmos(prc_mejoradoPar)(alfabeto, tamano, o)
 
-    val tiempo3 = comparar_algoritmos(prc_turbo)(alfabeto, tamano, o)
-    val tiempo3p = comparar_algoritmos(prc_turboPar)(alfabeto, tamano, o)
+    //val tiempo3 = comparar_algoritmos(prc_turbo)(alfabeto, tamano, o)
+    //val tiempo3p = comparar_algoritmos(prc_turboPar)(alfabeto, tamano, o)
 
-    val tiempo4 = comparar_algoritmos(prc_turboMejorado)(alfabeto, tamano, o)
-    val tiempo4p = comparar_algoritmos(prc_turboMejoradoPar)(alfabeto, tamano, o)
+    //val tiempo4 = comparar_algoritmos(prc_turboMejorado)(alfabeto, tamano, o)
+    //val tiempo4p = comparar_algoritmos(prc_turboMejoradoPar)(alfabeto, tamano, o)
 
-    //val tiempo5 = comparar_algoritmos(prc_turboacelerada)(alfabeto, tamano, o)
+    val tiempo5 = comparar_algoritmos(prc_turboacelerada)(alfabeto, tamano, o)
 
     //resultados
     //val cadena = prc_ingenuo(alfabeto, tamano, o)
@@ -329,40 +420,40 @@ object Taller4 {
     //val cadena_Par = prc_ingenuoPar(alfabeto, tamano, o)
     //println(s" ingenuoPar Cadena encontrada:      $cadena_Par")
 
-    val cadenaM = prc_mejorado(alfabeto, tamano, o)
-    println(s" mejorado Cadena encontrada:         $cadenaM")
-    val cadenaM_Par = prc_mejoradoPar(alfabeto, tamano, o)
-    println(s" mejoradoPar Cadena encontrada:      $cadenaM_Par")
+    //val cadenaM = prc_mejorado(alfabeto, tamano, o)
+    //println(s" mejorado Cadena encontrada:         $cadenaM")
+    //val cadenaM_Par = prc_mejoradoPar(alfabeto, tamano, o)
+    //println(s" mejoradoPar Cadena encontrada:      $cadenaM_Par")
 
-    val cadenaT = prc_turbo(alfabeto, tamano, o)
-    println(s" turbo Cadena encontrada:            $cadenaT")
-    val cadenaT_Par = prc_turboPar(alfabeto, tamano, o)
-    println(s" turboPar Cadena encontrada:         $cadenaT_Par")
+    //val cadenaT = prc_turbo(alfabeto, tamano, o)
+    //println(s" turbo Cadena encontrada:            $cadenaT")
+    //val cadenaT_Par = prc_turboPar(alfabeto, tamano, o)
+    //println(s" turboPar Cadena encontrada:         $cadenaT_Par")
 
-    val cadenaTM = prc_turboMejorado(alfabeto, tamano, o)
-    println(s" turbo Mejorado Cadena encontrada:   $cadenaTM")
-    val cadenaTM_Par = prc_turboMejoradoPar(alfabeto, tamano, o)
-    println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTM_Par")
+    //val cadenaTM = prc_turboMejorado(alfabeto, tamano, o)
+    //println(s" turbo Mejorado Cadena encontrada:   $cadenaTM")
+    //val cadenaTM_Par = prc_turboMejoradoPar(alfabeto, tamano, o)
+    //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTM_Par")
 
-    //val cadenaTa = prc_turboacelerada(alfabeto, tamano, o)
-    //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa")
+    val cadenaTa = prc_turboacelerada(alfabeto, tamano, o)
+    println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa")
 
 
     //println(s"Tiempo de ejecucion prc_ingenuo:        $tiempo1 ms")
     //println(s"Tiempo de ejecucion prc_ingenuoPar:     $tiempo1p ms")
 
-    println(s"Tiempo de ejecucion prc_mejorado:       $tiempo2 ms")
-    println(s"Tiempo de ejecucion prc_mejoradoPar:    $tiempo2p ms")
+    //println(s"Tiempo de ejecucion prc_mejorado:       $tiempo2 ms")
+    //println(s"Tiempo de ejecucion prc_mejoradoPar:    $tiempo2p ms")
 
-    println(s"Tiempo de ejecucion prc_turbo:          $tiempo3 ms")
-    println(s"Tiempo de ejecucion prc_turboPar:       $tiempo3p ms")
+    //println(s"Tiempo de ejecucion prc_turbo:          $tiempo3 ms")
+    //println(s"Tiempo de ejecucion prc_turboPar:       $tiempo3p ms")
 
-    println(s"Tiempo de ejecucion prc_turbomejorado:  $tiempo4 ms")
-    println(s"Tiempo de ejecucion prc_turbomejoradoPar:  $tiempo4p ms")
+    //println(s"Tiempo de ejecucion prc_turbomejorado:  $tiempo4 ms")
+    //println(s"Tiempo de ejecucion prc_turbomejoradoPar:  $tiempo4p ms")
 
 
-    //println(s"Secuencia aleatoria:  $secuenciaRandom")
-    //println(s"Tiempo de ejecucion prc_turboacelerada:  $tiempo5 ms")
+    println(s"Secuencia aleatoria:  $secuenciaRandom")
+    println(s"Tiempo de ejecucion prc_turboacelerada:  $tiempo5 ms")
 
 
   }
