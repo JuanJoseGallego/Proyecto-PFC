@@ -19,9 +19,9 @@ object Taller4 {
 
 
   //Esta funcion genera una secuencia aleatoria de tamaño n (prueba de 3 millones de elementos)
-  def secuenciaaleatoria(tamano: Int): String = {
+  def secuenciaaleatoria(tamano: Int): Seq[Char] = {
     val random = new Random()
-    (1 to tamano).map(_ => alfabeto(random.nextInt(alfabeto.length))).mkString //En cada posición se pega una letra de forma aleatoria
+    (1 to tamano).map(_ => alfabeto(random.nextInt(alfabeto.length)))//En cada posición se pega una letra de forma aleatoria
   }
 
   //se usan medidas de rendimiento para evaluar el tiempo que tarde en ejecutarse la función
@@ -395,6 +395,7 @@ object Taller4 {
     //println(s"Tiempo de ejecucion prc_turbomejorado:  $tiempo4 ms")
     //println(s"Tiempo de ejecucion prc_turbomejoradoPar:  $tiempo4p ms")
 
+    println (s"Secuencia aleatoria: $secuenciaRandom")
     println(s"Tiempo de ejecucion prc_turboacelerada:  $tiempo5 ms")
     println(s"Tiempo de ejecucion prc_turboaceleradaPar:  $tiempo5p ms")
 
