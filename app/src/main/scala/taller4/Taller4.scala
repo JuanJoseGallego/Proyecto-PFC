@@ -267,19 +267,19 @@ object Taller4 {
   }
 
 
-  def arbolSufijos(ss: Seq[Seq[Char]]): Trie = {
+  def arbolSufijos(secuenciaDeCadenas: Seq[Seq[Char]]): Trie = {
     def funcion_aux(ss: Seq[Seq[Char]], t: Trie): Trie = {
       if (ss.isEmpty) t
       else funcion_aux(ss.tail, adicionar(ss.head, t))
     }
-    funcion_aux(ss, Nodo(' ', false, List()))
+    funcion_aux(secuenciaDeCadenas, Nodo(' ', false, List()))
   }
   def prc_turboacelerada(alfabeto: Seq[Char], tamano: Int, o: Oraculo): Seq[Char] = {
 
     def filtrar(cadenaActual: Seq[Seq[Char]], cadenaAnterior: Seq[Seq[Char]] , k:Int ): Seq[Seq[Char]] = {
       if (cadenaActual.head.length > 2) {
         val t = arbolSufijos(cadenaAnterior)
-        cadenaActual.filter{s1 => (0 to s1.length - k).forall{ i => pertenece(s1.slice(i,i+k),t) }}
+        cadenaActual.filter{s1 => (0 to s1.length/2).forall{ i => pertenece(s1.slice(i,i+k),t) }}
       } else cadenaActual
     }
     def subcaden_candidatas(k: Int, SC: Seq[Seq[Char]]): Seq[Seq[Char]] = {
@@ -306,7 +306,7 @@ object Taller4 {
     def filtrar(cadenaActual: Seq[Seq[Char]], cadenaAnterior: Seq[Seq[Char]], k: Int): Seq[Seq[Char]] = {
       if (cadenaActual.head.length > 2) {
         val t = arbolSufijos(cadenaAnterior)
-        cadenaActual.filter { s1 => (0 to s1.length - k).forall { i => pertenece(s1.slice(i, i + k), t) } }
+        cadenaActual.filter { s1 => (0 to s1.length/2).forall { i => pertenece(s1.slice(i, i + k), t) } }
       } else cadenaActual
     }
 
@@ -316,14 +316,14 @@ object Taller4 {
         val (a, b) = SC.splitAt(SC.length / 2)
         val t1 = task {
           val cadenas = a.flatMap { s1 => SC.flatMap { s2 => Seq(s1 ++ s2) } }
-          filtrar(cadenas, SC,k)
+          filtrar(cadenas, SC,k).filter(o)
         }
         val t2 = task {
           val cadenas = b.flatMap { s1 => SC.flatMap { s2 => Seq(s1 ++ s2) } }
-          filtrar(cadenas, SC,k)
+          filtrar(cadenas, SC,k).filter(o)
         }
         val SCactual = t1.join ++ t2.join
-        val SCkFiltrado = SCactual.filter(o)
+        val SCkFiltrado = SCactual
         subcaden_candidatas(k * 2, SCkFiltrado)
       }
     }
@@ -335,7 +335,7 @@ object Taller4 {
   def main(args: Array[String]): Unit = {
 
     val secuencia = Seq('a', 'c', 'a', 'g')
-    val tamano = 4
+    val tamano = 32
     val secuenciaRandom = secuenciaaleatoria(tamano)
 
     val o: Oraculo = (s: Seq[Char]) => {
@@ -353,8 +353,8 @@ object Taller4 {
     //val tiempo4 = comparar_algoritmos(prc_turboMejorado)(alfabeto, tamano, o)
     //val tiempo4p = comparar_algoritmos(prc_turboMejoradoPar)(alfabeto, tamano, o)
 
-    //val tiempo5 = comparar_algoritmos(prc_turboacelerada)(alfabeto, tamano, o)
-    //val tiempo5p = comparar_algoritmos(prc_turboaceleradaPar)(alfabeto, tamano, o)
+    val tiempo5 = comparar_algoritmos(prc_turboacelerada)(alfabeto, tamano, o)
+    val tiempo5p = comparar_algoritmos(prc_turboaceleradaPar)(alfabeto, tamano, o)
 
     //resultados
     //val cadena = prc_ingenuo(alfabeto, tamano, o)
@@ -377,10 +377,10 @@ object Taller4 {
     //val cadenaTM_Par = prc_turboMejoradoPar(alfabeto, tamano, o)
     //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTM_Par")
 
-    //val cadenaTa = prc_turboacelerada(alfabeto, tamano, o)
-    //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa")
-    //val cadenaTa_Par = prc_turboaceleradaPar(alfabeto, tamano, o)
-    //println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa_Par")
+    val cadenaTa = prc_turboacelerada(alfabeto, tamano, o)
+    println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa")
+    val cadenaTa_Par = prc_turboaceleradaPar(alfabeto, tamano, o)
+    println(s" turbo Mejorado Par Cadena encontrada:   $cadenaTa_Par")
 
 
     //println(s"Tiempo de ejecucion prc_ingenuo:        $tiempo1 ms")
@@ -395,8 +395,8 @@ object Taller4 {
     //println(s"Tiempo de ejecucion prc_turbomejorado:  $tiempo4 ms")
     //println(s"Tiempo de ejecucion prc_turbomejoradoPar:  $tiempo4p ms")
 
-    //println(s"Tiempo de ejecucion prc_turboacelerada:  $tiempo5 ms")
-    //println(s"Tiempo de ejecucion prc_turboaceleradaPar:  $tiempo5p ms")
+    println(s"Tiempo de ejecucion prc_turboacelerada:  $tiempo5 ms")
+    println(s"Tiempo de ejecucion prc_turboaceleradaPar:  $tiempo5p ms")
 
 
 
